@@ -13,71 +13,90 @@ class ExpressionProcessor {
     public void start() {
         System.out.println("=== LOGIC EXPRESSION MINIMIZER ===");
         Scanner scanner = new Scanner(System.in);
-        System.out.print("Input your logical expression: ");
-        String input = scanner.nextLine();
+        System.out.print("Enter logical expression: ");
+        String expression = scanner.nextLine();
 
         try {
-            handleExpression(input);
-        } catch (Exception ex) {
-            System.out.println("\nERROR: " + ex.getMessage());
+            processExpression(expression);
+        } catch (Exception e) {
+            System.out.println("\nERROR: " + e.getMessage());
         } finally {
-            System.out.println("\n=== EXECUTION COMPLETED ===");
+            System.out.println("\n=== PROGRAM FINISHED ===");
             scanner.close();
         }
     }
 
-    public void handleExpression(String input) {
-        List<String> tokens = parser.tokenize(input);
-        List<String> postfix = parser.toPostfix(tokens);
+    public void processExpression(String expression) {
+        // Parse and validate input
+        List<String> tokens = parser.tokenize(expression);
         List<String> variables = parser.extractVariables(tokens);
         Collections.sort(variables);
 
+        if (variables.size() > 3) {
+            System.out.println("\nWarning: Karnaugh maps are only supported for up to 3 variables");
+        }
         if (variables.isEmpty()) {
-            System.out.println("Error: Expression doesn't contain variables");
+            System.out.println("Error: No variables found in expression");
             return;
         }
 
-        if (variables.size() > 3) {
-            System.out.println("\nNote: Karnaugh maps are limited to 3 variables");
+        // Generate truth table
+        List<String> postfix = parser.toPostfix(tokens);
+        List<TruthTableRow> truthTable = tableGenerator.generate(postfix, variables);
+
+        // Display truth table
+        displayer.showTruthTable(truthTable, variables, expression);
+
+        // Check for trivial cases
+        if (checkTrivialCases(truthTable)) {
+            return;
         }
 
-        List<TruthTableRow> table = tableGenerator.generate(postfix, variables);
-        displayer.showTruthTable(table, variables, input);
+        // Create canonical forms
+        List<LogicTerm> minterms = minimizer.createTerms(truthTable, variables, true);
+        List<LogicTerm> maxterms = minimizer.createTerms(truthTable, variables, false);
 
-        if (isConstantFunction(table)) return;
+        // Original forms
+        String sdnfInitial = minterms.isEmpty() ? "0" : minimizer.mergeTerms(minterms, true);
+        String sknfInitial = maxterms.isEmpty() ? "1" : minimizer.mergeTerms(maxterms, false);
+        displayer.showOriginalForms(sdnfInitial, sknfInitial);
 
-        List<LogicTerm> sdnfTerms = minimizer.createTerms(table, variables, true);
-        List<LogicTerm> sknfTerms = minimizer.createTerms(table, variables, false);
+        // SDNF Minimization
+        MinimizationResult sdnfResult = minimizer.minimize(minterms, true);
+        displayer.showMinimization("SDNF MINIMIZATION (CALCULATION)", sdnfResult);
 
-        String sdnfForm = sdnfTerms.isEmpty() ? "0" : minimizer.mergeTerms(sdnfTerms, true);
-        String sknfForm = sknfTerms.isEmpty() ? "1" : minimizer.mergeTerms(sknfTerms, false);
+        // SKNF Minimization
+        MinimizationResult sknfResult = minimizer.minimize(maxterms, false);
+        displayer.showMinimization("SKNF MINIMIZATION (CALCULATION)", sknfResult);
 
-        displayer.showOriginalForms(sdnfForm, sknfForm);
+        // SDNF Table Method
+        TableMinimizationResult sdnfTableResult = minimizer.minimizeWithTable(minterms, true);
+        displayer.showTableMinimization("SDNF TABLE METHOD", sdnfTableResult);
 
-        displayer.showMinimization("SDNF MINIMIZATION (CALCULATION)", minimizer.minimize(sdnfTerms, true));
-        displayer.showMinimization("SKNF MINIMIZATION (CALCULATION)", minimizer.minimize(sknfTerms, false));
+        // SKNF Table Method
+        TableMinimizationResult sknfTableResult = minimizer.minimizeWithTable(maxterms, false);
+        displayer.showTableMinimization("SKNF TABLE METHOD", sknfTableResult);
 
-        displayer.showTableMinimization("SDNF TABLE METHOD", minimizer.minimizeWithTable(sdnfTerms, true));
-        displayer.showTableMinimization("SKNF TABLE METHOD", minimizer.minimizeWithTable(sknfTerms, false));
+        // SDNF Karnaugh Map
+        KMapResult sdnfKMapResult = minimizer.minimizeWithKMap(minterms, true, variables);
+        displayer.showKMap("SDNF KARNAUGH MAP", sdnfKMapResult);
 
-        displayer.showKMap("SDNF KARNAUGH MAP", minimizer.minimizeWithKMap(sdnfTerms, true, variables));
-        displayer.showKMap("SKNF KARNAUGH MAP", minimizer.minimizeWithKMap(sknfTerms, false, variables));
+        // SKNF Karnaugh Map
+        KMapResult sknfKMapResult = minimizer.minimizeWithKMap(maxterms, false, variables);
+        displayer.showKMap("SKNF KARNAUGH MAP", sknfKMapResult);
     }
 
-    private boolean isConstantFunction(List<TruthTableRow> table) {
-        boolean isAlwaysFalse = table.stream().noneMatch(row -> row.result == 1);
-        boolean isAlwaysTrue = table.stream().noneMatch(row -> row.result == 0);
+    private boolean checkTrivialCases(List<TruthTableRow> table) {
+        boolean allZeros = table.stream().allMatch(row -> row.result == 0);
+        boolean allOnes = table.stream().allMatch(row -> row.result == 1);
 
-        if (isAlwaysFalse) {
-            System.out.println("\nConstant FALSE: output is always 0");
+        if (allZeros) {
+            System.out.println("\nThe function is always FALSE (0)");
+            return true;
+        } else if (allOnes) {
+            System.out.println("\nThe function is always TRUE (1)");
             return true;
         }
-
-        if (isAlwaysTrue) {
-            System.out.println("\nConstant TRUE: output is always 1");
-            return true;
-        }
-
         return false;
     }
 }
