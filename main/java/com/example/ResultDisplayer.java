@@ -165,6 +165,7 @@ class ResultDisplayer {
         System.out.println();
     }
 
+
     private void printTableBorder(int[] colWidths, String left, String middle, String right) {
         System.out.print(left);
         for (int i = 0; i < colWidths.length; i++) {
