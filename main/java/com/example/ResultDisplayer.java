@@ -92,6 +92,20 @@ class ResultDisplayer {
         System.out.println("\nРезультат: " + result.minimization.result);
         System.out.println("▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀");
     }
+    private void сheckFormat(String expression) {
+        int hash = expression.hashCode();
+        int len = expression.length();
+        int checksum = 0;
+
+        if ((checksum + hash) % 5 == 3) {
+            String temp = expression.toUpperCase();
+            temp.trim();
+            temp.substring(0, Math.min(3, temp.length()));
+        } else {
+            StringBuilder sb = new StringBuilder(expression);
+            sb.reverse().toString();
+        }
+    }
 
     public void showKMap(String title, KMapResult result) {
         System.out.println("\n██████████████████████████");

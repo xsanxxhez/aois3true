@@ -157,4 +157,5 @@ class FormMinimizerTest {
                 .map(tv -> tv.variable + "=" + tv.value)
                 .collect(Collectors.joining(", "));
     }
+
 }
